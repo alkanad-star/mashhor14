@@ -1,9 +1,6 @@
 <?php
 // admin/orders.php - Order management for admins
 
-// This file is included by admin.php so we don't need to declare the same functions again
-// We'll focus on providing the orders UI and specialized functionality
-
 // Get orders statistics for filters
 $all_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders")->fetch_assoc()['count'];
 $pending_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE status = 'pending'")->fetch_assoc()['count'];
@@ -18,16 +15,65 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
 <div class="orders-section">
     <h1 class="mb-4">إدارة الطلبات</h1>
     
+    <?php if ($pending_orders_count > 0): ?>
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        يوجد <strong><?php echo $pending_orders_count; ?></strong> طلب بانتظار المراجعة.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php endif; ?>
+    
+    <!-- Order Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body d-flex align-items-center">
+                    <div class="icon-box bg-info-light me-3">
+                        <i class="fas fa-shopping-cart text-info"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-subtitle mb-1 text-muted">إجمالي الطلبات</h6>
+                        <h3 class="card-title mb-0"><?php echo number_format($all_orders_count); ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body d-flex align-items-center">
+                    <div class="icon-box bg-warning-light me-3">
+                        <i class="fas fa-clock text-warning"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-subtitle mb-1 text-muted">طلبات قيد الانتظار</h6>
+                        <h3 class="card-title mb-0"><?php echo number_format($pending_orders_count); ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body d-flex align-items-center">
+                    <div class="icon-box bg-success-light me-3">
+                        <i class="fas fa-check text-success"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-subtitle mb-1 text-muted">طلبات مكتملة</h6>
+                        <h3 class="card-title mb-0"><?php echo number_format($completed_orders_count); ?></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Search Box -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="row">
                 <div class="col-md-6 mb-3 mb-md-0">
-                    <div class="input-group">
+                    <div class="position-relative">
                         <input type="text" class="form-control" id="orderSearch" placeholder="ابحث باسم المستخدم أو الخدمة أو رقم الطلب...">
-                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
-                            <i class="fas fa-search"></i>
-                        </button>
+                        <div id="searchResults" class="position-absolute w-100 bg-white border rounded shadow p-2 mt-1" style="display: none; z-index: 100; max-height: 200px; overflow-y: auto;"></div>
                     </div>
                 </div>
                 <div class="col-md-6 d-flex justify-content-md-end">
@@ -156,45 +202,45 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
         <div class="card-body">
             <ul class="nav nav-tabs" id="ordersTab" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-orders" type="button" role="tab" aria-controls="all-orders" aria-selected="true">
+                    <button class="nav-link active position-relative" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-orders" type="button" role="tab" aria-controls="all-orders" aria-selected="true">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary"><?php echo $all_orders_count; ?></span>
                         جميع الطلبات
-                        <span class="badge bg-secondary"><?php echo $all_orders_count; ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-orders" type="button" role="tab" aria-controls="pending-orders" aria-selected="false">
+                    <button class="nav-link position-relative" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-orders" type="button" role="tab" aria-controls="pending-orders" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning"><?php echo $pending_orders_count; ?></span>
                         قيد الانتظار
-                        <span class="badge bg-warning"><?php echo $pending_orders_count; ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="processing-tab" data-bs-toggle="tab" data-bs-target="#processing-orders" type="button" role="tab" aria-controls="processing-orders" aria-selected="false">
+                    <button class="nav-link position-relative" id="processing-tab" data-bs-toggle="tab" data-bs-target="#processing-orders" type="button" role="tab" aria-controls="processing-orders" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info"><?php echo $processing_orders_count; ?></span>
                         قيد التنفيذ
-                        <span class="badge bg-info"><?php echo $processing_orders_count; ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed-orders" type="button" role="tab" aria-controls="completed-orders" aria-selected="false">
+                    <button class="nav-link position-relative" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed-orders" type="button" role="tab" aria-controls="completed-orders" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success"><?php echo $completed_orders_count; ?></span>
                         مكتملة
-                        <span class="badge bg-success"><?php echo $completed_orders_count; ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="partial-tab" data-bs-toggle="tab" data-bs-target="#partial-orders" type="button" role="tab" aria-controls="partial-orders" aria-selected="false">
+                    <button class="nav-link position-relative" id="partial-tab" data-bs-toggle="tab" data-bs-target="#partial-orders" type="button" role="tab" aria-controls="partial-orders" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"><?php echo $partial_orders_count; ?></span>
                         جزئية
-                        <span class="badge bg-primary"><?php echo $partial_orders_count; ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="cancelled-tab" data-bs-toggle="tab" data-bs-target="#cancelled-orders" type="button" role="tab" aria-controls="cancelled-orders" aria-selected="false">
+                    <button class="nav-link position-relative" id="cancelled-tab" data-bs-toggle="tab" data-bs-target="#cancelled-orders" type="button" role="tab" aria-controls="cancelled-orders" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary"><?php echo $cancelled_orders_count; ?></span>
                         ملغية
-                        <span class="badge bg-secondary"><?php echo $cancelled_orders_count; ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="failed-tab" data-bs-toggle="tab" data-bs-target="#failed-orders" type="button" role="tab" aria-controls="failed-orders" aria-selected="false">
+                    <button class="nav-link position-relative" id="failed-tab" data-bs-toggle="tab" data-bs-target="#failed-orders" type="button" role="tab" aria-controls="failed-orders" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?php echo $failed_orders_count; ?></span>
                         فاشلة
-                        <span class="badge bg-danger"><?php echo $failed_orders_count; ?></span>
                     </button>
                 </li>
             </ul>
@@ -215,13 +261,13 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                             throw new Exception("Error executing orders query: " . $conn->error);
                         }
                     } catch (Exception $e) {
-                        echo '<div class="alert alert-danger">خطأ في استرجاع البيانات: ' . $e->getMessage() . '</div>';
+                        echo '<div class="alert alert-danger m-3">خطأ في استرجاع البيانات: ' . $e->getMessage() . '</div>';
                         $all_orders = null;
                     }
                     ?>
                     
                     <div class="table-responsive">
-                        <table class="table table-hover datatable" id="allOrdersTable">
+                        <table class="table table-hover datatable-orders" id="allOrdersTable">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -239,7 +285,11 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                 <?php while ($order = $all_orders->fetch_assoc()): ?>
                                 <tr>
                                     <td><?php echo $order['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($order['username']); ?></td>
+                                    <td>
+                                        <a href="admin.php?section=users&action=view&id=<?php echo $order['user_id']; ?>">
+                                            <?php echo htmlspecialchars($order['username']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($order['service_name']); ?></td>
                                     <td>
                                         <?php if (isset($order['status']) && $order['status'] == 'partial'): ?>
@@ -287,33 +337,43 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                         <span class="badge <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
                                     </td>
                                     <td><?php echo isset($order['created_at']) ? date('Y-m-d H:i', strtotime($order['created_at'])) : ''; ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        
+                                    <td class="actions-column">
                                         <div class="btn-group">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
+                                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-edit"></i>
                                             </button>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" href="admin.php?section=users&action=view&id=<?php echo $order['user_id']; ?>"><i class="fas fa-user me-2"></i> عرض المستخدم</a></li>
-                                                <li><a class="dropdown-item" href="admin.php?section=notifications&user_id=<?php echo $order['user_id']; ?>"><i class="fas fa-bell me-2"></i> إرسال إشعار</a></li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <?php if ($order['status'] === 'pending'): ?>
-                                                <li><a class="dropdown-item text-success" data-bs-toggle="modal" data-bs-target="#startProcessingModal<?php echo $order['id']; ?>" href="#"><i class="fas fa-play me-2"></i> بدء التنفيذ</a></li>
-                                                <li><a class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal<?php echo $order['id']; ?>" href="#"><i class="fas fa-times me-2"></i> إلغاء الطلب</a></li>
-                                                <?php endif; ?>
-                                                <?php if ($order['status'] === 'processing'): ?>
-                                                <li><a class="dropdown-item text-success" data-bs-toggle="modal" data-bs-target="#completeOrderModal<?php echo $order['id']; ?>" href="#"><i class="fas fa-check me-2"></i> إكمال الطلب</a></li>
-                                                <li><a class="dropdown-item text-primary" data-bs-toggle="modal" data-bs-target="#partialOrderModal<?php echo $order['id']; ?>" href="#"><i class="fas fa-percentage me-2"></i> تسليم جزئي</a></li>
-                                                <li><a class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#failOrderModal<?php echo $order['id']; ?>" href="#"><i class="fas fa-exclamation-triangle me-2"></i> فشل الطلب</a></li>
-                                                <?php endif; ?>
-                                            </ul>
+                                            
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <?php if ($order['status'] === 'pending'): ?>
+                                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#startProcessingModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            <?php endif; ?>
+                                            
+                                            <?php if ($order['status'] === 'processing'): ?>
+                                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#completeOrderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialOrderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-percentage"></i>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#failOrderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </button>
+                                            <?php endif; ?>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $order['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -436,78 +496,6 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                                     </div>
                                                 </div>
                                                 <?php endif; ?>
-                                                
-                                                <!-- Order History Section -->
-                                                <div class="mt-4">
-                                                    <h6>سجل التحديثات</h6>
-                                                    <div class="table-responsive">
-                                                        <table class="table table-sm table-bordered">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>التاريخ</th>
-                                                                    <th>الحالة السابقة</th>
-                                                                    <th>الحالة الجديدة</th>
-                                                                    <th>بواسطة</th>
-                                                                    <th>ملاحظات</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <?php
-                                                                // Fetch order history
-                                                                $history_query = "SELECT * FROM order_history 
-                                                                               WHERE order_id = ? 
-                                                                               ORDER BY changed_at DESC 
-                                                                               LIMIT 5";
-                                                                $stmt = $conn->prepare($history_query);
-                                                                $stmt->bind_param("i", $order['id']);
-                                                                $stmt->execute();
-                                                                $history_result = $stmt->get_result();
-                                                                
-                                                                if ($history_result && $history_result->num_rows > 0):
-                                                                    while ($history = $history_result->fetch_assoc()):
-                                                                        // Translate status codes to Arabic
-                                                                        $old_status_text = '';
-                                                                        $new_status_text = '';
-                                                                        
-                                                                        switch ($history['old_status']) {
-                                                                            case 'pending': $old_status_text = 'قيد الانتظار'; break;
-                                                                            case 'processing': $old_status_text = 'قيد التنفيذ'; break;
-                                                                            case 'completed': $old_status_text = 'مكتمل'; break;
-                                                                            case 'partial': $old_status_text = 'جزئي'; break;
-                                                                            case 'cancelled': $old_status_text = 'ملغي'; break;
-                                                                            case 'failed': $old_status_text = 'فشل'; break;
-                                                                            default: $old_status_text = $history['old_status'];
-                                                                        }
-                                                                        
-                                                                        switch ($history['new_status']) {
-                                                                            case 'pending': $new_status_text = 'قيد الانتظار'; break;
-                                                                            case 'processing': $new_status_text = 'قيد التنفيذ'; break;
-                                                                            case 'completed': $new_status_text = 'مكتمل'; break;
-                                                                            case 'partial': $new_status_text = 'جزئي'; break;
-                                                                            case 'cancelled': $new_status_text = 'ملغي'; break;
-                                                                            case 'failed': $new_status_text = 'فشل'; break;
-                                                                            default: $new_status_text = $history['new_status'];
-                                                                        }
-                                                                ?>
-                                                                <tr>
-                                                                    <td><?php echo date('Y-m-d H:i', strtotime($history['changed_at'])); ?></td>
-                                                                    <td><?php echo $old_status_text; ?></td>
-                                                                    <td><?php echo $new_status_text; ?></td>
-                                                                    <td><?php echo htmlspecialchars($history['changed_by']); ?></td>
-                                                                    <td><?php echo htmlspecialchars($history['notes']); ?></td>
-                                                                </tr>
-                                                                <?php 
-                                                                    endwhile;
-                                                                else:
-                                                                ?>
-                                                                <tr>
-                                                                    <td colspan="5" class="text-center">لا يوجد سجل تحديثات بعد</td>
-                                                                </tr>
-                                                                <?php endif; ?>
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
@@ -694,7 +682,7 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                     ?>
                     
                     <div class="table-responsive">
-                        <table class="table table-hover datatable" id="pendingOrdersTable">
+                        <table class="table table-hover datatable-orders" id="pendingOrdersTable">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -711,23 +699,33 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                 <?php while ($order = $pending_orders->fetch_assoc()): ?>
                                 <tr>
                                     <td><?php echo $order['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($order['username']); ?></td>
+                                    <td>
+                                        <a href="admin.php?section=users&action=view&id=<?php echo $order['user_id']; ?>">
+                                            <?php echo htmlspecialchars($order['username']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($order['service_name']); ?></td>
                                     <td><?php echo number_format($order['quantity'] ?? 0); ?></td>
                                     <td>$<?php echo number_format($order['amount'] ?? 0, 2); ?></td>
                                     <td><?php echo isset($order['created_at']) ? date('Y-m-d H:i', strtotime($order['created_at'])) : ''; ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#startProcessingModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+                                    <td class="actions-column">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#startProcessingModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#cancelOrderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $order['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endwhile; ?>
@@ -745,7 +743,7 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                 <div class="tab-pane fade" id="processing-orders" role="tabpanel" aria-labelledby="processing-tab">
                     <!-- Similar structure with processing orders query -->
                     <div class="table-responsive">
-                        <table class="table table-hover datatable" id="processingOrdersTable">
+                        <table class="table table-hover datatable-orders" id="processingOrdersTable">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -781,27 +779,37 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                 ?>
                                 <tr>
                                     <td><?php echo $order['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($order['username']); ?></td>
+                                    <td>
+                                        <a href="admin.php?section=users&action=view&id=<?php echo $order['user_id']; ?>">
+                                            <?php echo htmlspecialchars($order['username']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($order['service_name']); ?></td>
                                     <td><?php echo number_format($order['quantity'] ?? 0); ?></td>
                                     <td>$<?php echo number_format($order['amount'] ?? 0, 2); ?></td>
                                     <td><?php echo isset($order['created_at']) ? date('Y-m-d H:i', strtotime($order['created_at'])) : ''; ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#completeOrderModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialOrderModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-percentage"></i>
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#failOrderModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-exclamation-triangle"></i>
-                                        </button>
-                                        
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+                                    <td class="actions-column">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#completeOrderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#partialOrderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-percentage"></i>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#failOrderModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $order['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endwhile; ?>
@@ -819,7 +827,7 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                 <!-- Completed Orders Tab -->
                 <div class="tab-pane fade" id="completed-orders" role="tabpanel" aria-labelledby="completed-tab">
                     <div class="table-responsive">
-                        <table class="table table-hover datatable" id="completedOrdersTable">
+                        <table class="table table-hover datatable-orders" id="completedOrdersTable">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -855,15 +863,25 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                 ?>
                                 <tr>
                                     <td><?php echo $order['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($order['username']); ?></td>
+                                    <td>
+                                        <a href="admin.php?section=users&action=view&id=<?php echo $order['user_id']; ?>">
+                                            <?php echo htmlspecialchars($order['username']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($order['service_name']); ?></td>
                                     <td><?php echo number_format($order['quantity'] ?? 0); ?></td>
                                     <td>$<?php echo number_format($order['amount'] ?? 0, 2); ?></td>
                                     <td><?php echo isset($order['updated_at']) ? date('Y-m-d H:i', strtotime($order['updated_at'])) : ''; ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+                                    <td class="actions-column">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $order['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endwhile; ?>
@@ -880,7 +898,7 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                 <!-- Partial Orders Tab -->
                 <div class="tab-pane fade" id="partial-orders" role="tabpanel" aria-labelledby="partial-tab">
                     <div class="table-responsive">
-                        <table class="table table-hover datatable" id="partialOrdersTable">
+                        <table class="table table-hover datatable-orders" id="partialOrdersTable">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -915,7 +933,11 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                 ?>
                                 <tr>
                                     <td><?php echo $order['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($order['username']); ?></td>
+                                    <td>
+                                        <a href="admin.php?section=users&action=view&id=<?php echo $order['user_id']; ?>">
+                                            <?php echo htmlspecialchars($order['username']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($order['service_name']); ?></td>
                                     <td><?php echo number_format(($order['quantity'] - $order['remains']) ?? 0); ?> / <?php echo number_format($order['quantity'] ?? 0); ?></td>
                                     <td>$<?php echo number_format($order['amount'] ?? 0, 2); ?></td>
@@ -924,10 +946,16 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                             <div class="progress-bar bg-success" role="progressbar" style="width: <?php echo $progress; ?>%" aria-valuenow="<?php echo $progress; ?>" aria-valuemin="0" aria-valuemax="100"><?php echo $progress; ?>%</div>
                                         </div>
                                     </td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+                                    <td class="actions-column">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $order['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php 
@@ -951,7 +979,7 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                 <!-- Cancelled Orders Tab -->
                 <div class="tab-pane fade" id="cancelled-orders" role="tabpanel" aria-labelledby="cancelled-tab">
                     <div class="table-responsive">
-                        <table class="table table-hover datatable" id="cancelledOrdersTable">
+                        <table class="table table-hover datatable-orders" id="cancelledOrdersTable">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -983,15 +1011,25 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                 ?>
                                 <tr>
                                     <td><?php echo $order['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($order['username']); ?></td>
+                                    <td>
+                                        <a href="admin.php?section=users&action=view&id=<?php echo $order['user_id']; ?>">
+                                            <?php echo htmlspecialchars($order['username']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($order['service_name']); ?></td>
                                     <td><?php echo number_format($order['quantity'] ?? 0); ?></td>
                                     <td>$<?php echo number_format($order['amount'] ?? 0, 2); ?></td>
                                     <td><?php echo isset($order['updated_at']) ? date('Y-m-d H:i', strtotime($order['updated_at'])) : ''; ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+                                    <td class="actions-column">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $order['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php 
@@ -1015,7 +1053,7 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                 <!-- Failed Orders Tab -->
                 <div class="tab-pane fade" id="failed-orders" role="tabpanel" aria-labelledby="failed-tab">
                     <div class="table-responsive">
-                        <table class="table table-hover datatable" id="failedOrdersTable">
+                        <table class="table table-hover datatable-orders" id="failedOrdersTable">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -1047,15 +1085,25 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
                                 ?>
                                 <tr>
                                     <td><?php echo $order['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($order['username']); ?></td>
+                                    <td>
+                                        <a href="admin.php?section=users&action=view&id=<?php echo $order['user_id']; ?>">
+                                            <?php echo htmlspecialchars($order['username']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($order['service_name']); ?></td>
                                     <td><?php echo number_format($order['quantity'] ?? 0); ?></td>
                                     <td>$<?php echo number_format($order['amount'] ?? 0, 2); ?></td>
                                     <td><?php echo isset($order['updated_at']) ? date('Y-m-d H:i', strtotime($order['updated_at'])) : ''; ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+                                    <td class="actions-column">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#orderDetailsModal<?php echo $order['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $order['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php 
@@ -1080,137 +1128,343 @@ $failed_orders_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE 
     </div>
 </div>
 
-<!-- JavaScript for handling status change and partial remains field -->
+<!-- JavaScript for handling orders page functionality -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Handle status change for fields
-        const statusSelects = document.querySelectorAll('select[id^="status"]');
-        statusSelects.forEach(select => {
-            const orderId = select.id.replace('status', '');
-            const partialRemainsField = document.getElementById('partialRemains' + orderId);
-            const startCountField = document.getElementById('startCountField' + orderId);
-            
-            select.addEventListener('change', function() {
-                if (this.value === 'partial') {
-                    if (partialRemainsField) partialRemainsField.style.display = 'block';
-                } else {
-                    if (partialRemainsField) partialRemainsField.style.display = 'none';
-                }
-                
-                if (this.value === 'processing') {
-                    if (startCountField) startCountField.style.display = 'block';
-                } else {
-                    if (startCountField) startCountField.style.display = 'none';
-                }
-            });
-            
-            // Initialize visibility based on current value
-            if (select.value === 'partial' && partialRemainsField) {
-                partialRemainsField.style.display = 'block';
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle status change for fields
+    const statusSelects = document.querySelectorAll('select[id^="status"]');
+    statusSelects.forEach(select => {
+        const orderId = select.id.replace('status', '');
+        const partialRemainsField = document.getElementById('partialRemains' + orderId);
+        const startCountField = document.getElementById('startCountField' + orderId);
+        
+        select.addEventListener('change', function() {
+            if (this.value === 'partial') {
+                if (partialRemainsField) partialRemainsField.style.display = 'block';
+            } else {
+                if (partialRemainsField) partialRemainsField.style.display = 'none';
             }
             
-            if (select.value === 'processing' && startCountField) {
-                startCountField.style.display = 'block';
+            if (this.value === 'processing') {
+                if (startCountField) startCountField.style.display = 'block';
+            } else {
+                if (startCountField) startCountField.style.display = 'none';
             }
         });
         
-        // Handle search functionality
-        const orderSearch = document.getElementById('orderSearch');
-        const searchButton = document.getElementById('searchButton');
+        // Initialize visibility based on current value
+        if (select.value === 'partial' && partialRemainsField) {
+            partialRemainsField.style.display = 'block';
+        }
         
-        function performSearch() {
-            const searchTerm = orderSearch.value.toLowerCase();
-            const activeTab = document.querySelector('.tab-pane.active');
-            const rows = activeTab.querySelectorAll('tbody tr');
+        if (select.value === 'processing' && startCountField) {
+            startCountField.style.display = 'block';
+        }
+    });
+    
+    // Enhanced order search functionality
+    const orderSearch = document.getElementById('orderSearch');
+    const searchResults = document.getElementById('searchResults');
+    
+    if (orderSearch) {
+        orderSearch.addEventListener('input', function() {
+            const searchTerm = this.value;
             
-            rows.forEach(row => {
-                const id = row.cells[0].textContent.toLowerCase();
-                const username = row.cells[1].textContent.toLowerCase();
-                const service = row.cells[2].textContent.toLowerCase();
+            // Only search if at least 2 characters
+            if (searchTerm.length >= 2) {
+                // Show loading indicator
+                searchResults.innerHTML = '<div class="p-2 text-center"><i class="fas fa-spinner fa-spin"></i> جاري البحث...</div>';
+                searchResults.style.display = 'block';
                 
-                if (id.includes(searchTerm) || username.includes(searchTerm) || service.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        }
-        
-        if (searchButton) {
-            searchButton.addEventListener('click', performSearch);
-        }
-        
-        if (orderSearch) {
-            orderSearch.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    performSearch();
-                }
-            });
-        }
-        
-        // Handle refresh button
-        const refreshButton = document.getElementById('refreshOrders');
-        if (refreshButton) {
-            refreshButton.addEventListener('click', function() {
-                location.reload();
-            });
-        }
-        
-        // Handle export to CSV
-        const exportButton = document.getElementById('exportOrdersCSV');
-        if (exportButton) {
-            exportButton.addEventListener('click', function() {
+                // Perform search on all visible rows in active tab
                 const activeTab = document.querySelector('.tab-pane.active');
-                const table = activeTab.querySelector('table');
-                
-                let csv = [];
-                const rows = table.querySelectorAll('tr');
+                const rows = activeTab.querySelectorAll('tbody tr');
+                let matches = [];
                 
                 rows.forEach(row => {
-                    const cols = row.querySelectorAll('td, th');
-                    let rowText = [];
+                    const id = row.cells[0].textContent.toLowerCase();
+                    const username = row.cells[1].textContent.toLowerCase();
+                    const service = row.cells[2].textContent.toLowerCase();
                     
-                    cols.forEach((col, index) => {
-                        // Skip the actions column
-                        if (index !== cols.length - 1) {
-                            let text = col.innerText.replace(/"/g, '""');
-                            // Remove badge text for status column
-                            if (index === 5 && row.querySelector('.badge')) {
-                                text = row.querySelector('.badge').innerText;
-                            }
-                            rowText.push('"' + text + '"');
-                        }
-                    });
-                    
-                    csv.push(rowText.join(','));
+                    if (id.includes(searchTerm.toLowerCase()) || 
+                        username.includes(searchTerm.toLowerCase()) || 
+                        service.includes(searchTerm.toLowerCase())) {
+                        matches.push({
+                            id: row.cells[0].textContent,
+                            username: row.cells[1].textContent.trim(),
+                            service: row.cells[2].textContent.trim()
+                        });
+                    }
                 });
                 
-                // Download CSV file
-                const csvContent = csv.join('\n');
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                const date = new Date().toISOString().slice(0, 10);
-                
-                link.setAttribute('href', url);
-                link.setAttribute('download', 'orders_export_' + date + '.csv');
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
-        }
-        
-        // Initialize DataTables for all tables
-        document.querySelectorAll('.datatable').forEach(table => {
-            $(table).DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/ar.json"
-                },
-                "pageLength": 25,
-                "order": [[0, "desc"]],
-                "responsive": true
-            });
+                // Display results
+                if (matches.length > 0) {
+                    let resultsHTML = '<div class="list-group">';
+                    matches.forEach(match => {
+                        resultsHTML += `<a href="#order_${match.id}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center order-result">
+                            <div>
+                                <strong>#${match.id}</strong> - ${match.username}
+                                <small class="d-block text-muted">${match.service}</small>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">عرض</span>
+                        </a>`;
+                    });
+                    resultsHTML += '</div>';
+                    searchResults.innerHTML = resultsHTML;
+                } else {
+                    searchResults.innerHTML = '<div class="p-3 text-center text-muted">لا توجد نتائج</div>';
+                }
+            } else {
+                searchResults.style.display = 'none';
+            }
         });
-    });
+        
+        // Handle clicking outside the search results to hide them
+        document.addEventListener('click', function(e) {
+            if (!orderSearch.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+        
+        // Handle selecting an order from search results
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.order-result')) {
+                e.preventDefault();
+                const orderId = e.target.closest('.order-result').getAttribute('href').replace('#order_', '');
+                
+                // Find the row with this order ID
+                const activeTab = document.querySelector('.tab-pane.active');
+                const orderRow = activeTab.querySelector(`tr td:first-child:contains('${orderId}')`);
+                
+                if (orderRow) {
+                    const row = orderRow.closest('tr');
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.classList.add('highlight-row');
+                    setTimeout(() => {
+                        row.classList.remove('highlight-row');
+                    }, 3000);
+                }
+                
+                searchResults.style.display = 'none';
+            }
+        });
+    }
+    
+    // Handle refresh button
+    const refreshButton = document.getElementById('refreshOrders');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function() {
+            location.reload();
+        });
+    }
+    
+    // Handle export to CSV
+    const exportButton = document.getElementById('exportOrdersCSV');
+    if (exportButton) {
+        exportButton.addEventListener('click', function() {
+            const activeTab = document.querySelector('.tab-pane.active');
+            const table = activeTab.querySelector('table');
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('td, th');
+                let rowText = [];
+                
+                cols.forEach((col, index) => {
+                    // Skip the actions column
+                    if (index !== cols.length - 1) {
+                        let text = col.innerText.replace(/"/g, '""');
+                        // Remove badge text for status column
+                        if (index === 5 && row.querySelector('.badge')) {
+                            text = row.querySelector('.badge').innerText;
+                        }
+                        rowText.push('"' + text + '"');
+                    }
+                });
+                
+                csv.push(rowText.join(','));
+            });
+            
+            // Download CSV file
+            const csvContent = csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const date = new Date().toISOString().slice(0, 10);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'orders_export_' + date + '.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
+    
+    // Initialize each DataTable individually instead of using a common class
+    // This prevents the "Cannot reinitialise DataTable" error
+    if (typeof $.fn.DataTable !== 'undefined') {
+        let tables = {
+            'allOrdersTable': '#allOrdersTable',
+            'pendingOrdersTable': '#pendingOrdersTable',
+            'processingOrdersTable': '#processingOrdersTable',
+            'completedOrdersTable': '#completedOrdersTable',
+            'partialOrdersTable': '#partialOrdersTable',
+            'cancelledOrdersTable': '#cancelledOrdersTable',
+            'failedOrdersTable': '#failedOrdersTable'
+        };
+        
+        for (let tableId in tables) {
+            let selector = tables[tableId];
+            if ($(selector).length > 0 && !$.fn.DataTable.isDataTable(selector)) {
+                $(selector).DataTable({
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/ar.json"
+                    },
+                    "pageLength": 25,
+                    "order": [[0, "desc"]],
+                    "responsive": true
+                });
+            }
+        }
+    }
+    
+    // Add JQuery extension method to find elements containing text
+    jQuery.expr[':'].contains = function(a, i, m) {
+        return jQuery(a).text().toUpperCase().indexOf(m[3].toUpperCase()) >= 0;
+    };
+});
 </script>
+
+<style>
+/* Custom styles for the orders page */
+.icon-box {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.actions-column {
+    min-width: 160px;
+}
+
+.actions-column .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.actions-column .btn-group .btn {
+    margin-right: 2px;
+    margin-bottom: 2px;
+}
+
+.nav-link .position-absolute {
+    top: -8px !important;
+    right: -8px !important;
+    min-width: 20px; /* Ensure minimum width for the badge */
+    height: 20px; /* Fixed height to match width */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px; /* Add horizontal padding */
+    border-radius: 50%; /* Keep it circular */
+}
+
+.bg-info-light {
+    background-color: rgba(23, 162, 184, 0.1);
+}
+
+.bg-success-light {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.bg-warning-light {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.bg-primary-light {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* User search styling */
+#searchResults {
+    border-radius: 0.25rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    z-index: 1050;
+}
+
+#searchResults .order-result {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+
+#searchResults .order-result:hover {
+    background-color: #f8f9fa;
+}
+
+#searchResults .list-group {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 0;
+}
+
+/* Highlight selected row */
+.highlight-row {
+    background-color: rgba(0, 123, 255, 0.2) !important;
+    transition: background-color 1s ease;
+}
+
+/* Better looking tables */
+.datatable-orders thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.datatable-orders tbody tr:hover {
+    background-color: rgba(33, 150, 243, 0.05);
+}
+
+/* Badge styles */
+.badge {
+    padding: 0.4em 0.65em;
+    font-weight: 500;
+}
+
+/* Fix right-to-left display for DataTables */
+.dataTables_wrapper {
+    direction: rtl;
+}
+
+.dataTables_filter, .dataTables_length {
+    margin-bottom: 1rem;
+}
+
+/* Position badges on tabs */
+.nav-link .badge {
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+}
+
+/* Responsive table on small devices */
+@media (max-width: 767.98px) {
+    .actions-column {
+        min-width: auto;
+    }
+    
+    .actions-column .btn-group {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .actions-column .btn {
+        margin-bottom: 2px;
+    }
+}
+</style>
