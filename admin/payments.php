@@ -15,6 +15,16 @@ $today_deposits = $conn->query($today_deposits_query)->fetch_assoc()['total'] ??
 
 $month_deposits_query = "SELECT SUM(amount) as total FROM transactions WHERE type = 'deposit' AND status = 'completed' AND MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())";
 $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ?? 0;
+
+// Get counts for each payment type
+$all_payments_count_query = "SELECT COUNT(*) as count FROM transactions WHERE type = 'deposit'";
+$all_payments_count = $conn->query($all_payments_count_query)->fetch_assoc()['count'] ?? 0;
+
+$completed_payments_count_query = "SELECT COUNT(*) as count FROM transactions WHERE type = 'deposit' AND status = 'completed'";
+$completed_payments_count = $conn->query($completed_payments_count_query)->fetch_assoc()['count'] ?? 0;
+
+$failed_payments_count_query = "SELECT COUNT(*) as count FROM transactions WHERE type = 'deposit' AND (status = 'failed' OR status = 'cancelled')";
+$failed_payments_count = $conn->query($failed_payments_count_query)->fetch_assoc()['count'] ?? 0;
 ?>
 
 <!-- Payments Management -->
@@ -76,20 +86,28 @@ $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ??
         <div class="card-body">
             <ul class="nav nav-tabs" id="paymentsTab" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="all-payments-tab" data-bs-toggle="tab" data-bs-target="#all-payments" type="button" role="tab" aria-controls="all-payments" aria-selected="true">جميع المدفوعات</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="pending-payments-tab" data-bs-toggle="tab" data-bs-target="#pending-payments" type="button" role="tab" aria-controls="pending-payments" aria-selected="false">المدفوعات المعلقة
-                    <?php if ($pending_payments > 0): ?>
-                    <span class="badge bg-danger ms-1"><?php echo $pending_payments; ?></span>
-                    <?php endif; ?>
+                    <button class="nav-link active position-relative" id="all-payments-tab" data-bs-toggle="tab" data-bs-target="#all-payments" type="button" role="tab" aria-controls="all-payments" aria-selected="true">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary"><?php echo $all_payments_count; ?></span>
+                        جميع المدفوعات
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="completed-payments-tab" data-bs-toggle="tab" data-bs-target="#completed-payments" type="button" role="tab" aria-controls="completed-payments" aria-selected="false">المدفوعات المكتملة</button>
+                    <button class="nav-link position-relative" id="pending-payments-tab" data-bs-toggle="tab" data-bs-target="#pending-payments" type="button" role="tab" aria-controls="pending-payments" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning"><?php echo $pending_payments; ?></span>
+                        المدفوعات المعلقة
+                    </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="failed-payments-tab" data-bs-toggle="tab" data-bs-target="#failed-payments" type="button" role="tab" aria-controls="failed-payments" aria-selected="false">المدفوعات الفاشلة</button>
+                    <button class="nav-link position-relative" id="completed-payments-tab" data-bs-toggle="tab" data-bs-target="#completed-payments" type="button" role="tab" aria-controls="completed-payments" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success"><?php echo $completed_payments_count; ?></span>
+                        المدفوعات المكتملة
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link position-relative" id="failed-payments-tab" data-bs-toggle="tab" data-bs-target="#failed-payments" type="button" role="tab" aria-controls="failed-payments" aria-selected="false">
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?php echo $failed_payments_count; ?></span>
+                        المدفوعات الفاشلة
+                    </button>
                 </li>
             </ul>
             
@@ -194,14 +212,18 @@ $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ??
                                             </button>
                                             
                                             <?php if ($payment['status'] === 'pending'): ?>
-                                            <button type="button" class="btn btn-sm btn-success approve-payment-btn" data-bs-toggle="modal" data-bs-target="#approvePaymentModal<?php echo $payment['id']; ?>">
+                                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approvePaymentModal<?php echo $payment['id']; ?>">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                             
-                                            <button type="button" class="btn btn-sm btn-danger reject-payment-btn" data-bs-toggle="modal" data-bs-target="#rejectPaymentModal<?php echo $payment['id']; ?>">
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectPaymentModal<?php echo $payment['id']; ?>">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                             <?php endif; ?>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $payment['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
                                             
                                             <?php
                                             // Check if this payment has a receipt
@@ -221,155 +243,6 @@ $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ??
                                         </div>
                                     </td>
                                 </tr>
-                                
-                                <!-- Payment Details Modal -->
-                                <div class="modal fade" id="paymentDetailsModal<?php echo $payment['id']; ?>" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">تفاصيل عملية الدفع #<?php echo $payment['id']; ?></h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <p><strong>رقم العملية:</strong> <?php echo $payment['id']; ?></p>
-                                                        <p><strong>المستخدم:</strong> 
-                                                            <a href="admin.php?section=users&action=view&id=<?php echo $payment['user_id']; ?>">
-                                                                <?php echo htmlspecialchars($payment['username']); ?>
-                                                            </a>
-                                                        </p>
-                                                        <p><strong>المبلغ:</strong> $<?php echo number_format($payment['amount'], 2); ?></p>
-                                                        <p><strong>طريقة الدفع:</strong> <?php echo strip_tags($payment_method); ?></p>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <p><strong>الحالة:</strong> <span class="badge <?php echo $status_class; ?>"><?php echo $status_text; ?></span></p>
-                                                        <p><strong>تاريخ الإنشاء:</strong> <?php echo date('Y-m-d H:i:s', strtotime($payment['created_at'])); ?></p>
-                                                        <?php if (isset($payment['updated_at'])): ?>
-                                                        <p><strong>آخر تحديث:</strong> <?php echo date('Y-m-d H:i:s', strtotime($payment['updated_at'])); ?></p>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                                
-                                                <hr>
-                                                <h6>الوصف:</h6>
-                                                <div class="p-3 bg-light rounded">
-                                                    <?php echo nl2br(htmlspecialchars($payment['description'])); ?>
-                                                </div>
-                                                
-                                                <?php if ($receipt_result && $receipt_result->num_rows > 0): ?>
-                                                <hr>
-                                                <h6>إيصال الدفع:</h6>
-                                                <div class="text-center p-3 bg-light rounded">
-                                                    <img src="<?php echo htmlspecialchars($receipt['file_path']); ?>" class="img-fluid border" style="max-height: 400px;">
-                                                    <div class="mt-2">
-                                                        <a href="<?php echo htmlspecialchars($receipt['file_path']); ?>" class="btn btn-sm btn-primary" target="_blank">
-                                                            <i class="fas fa-external-link-alt me-1"></i> عرض الصورة كاملة
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                                                
-                                                <?php if ($payment['status'] === 'pending'): ?>
-                                                <form method="post" action="" class="d-inline">
-                                                    <input type="hidden" name="transaction_id" value="<?php echo $payment['id']; ?>">
-                                                    <button type="submit" name="approve_payment" class="btn btn-success approve-payment-btn">
-                                                        <i class="fas fa-check me-1"></i> اعتماد
-                                                    </button>
-                                                </form>
-                                                
-                                                <form method="post" action="" class="d-inline">
-                                                    <input type="hidden" name="transaction_id" value="<?php echo $payment['id']; ?>">
-                                                    <button type="submit" name="reject_payment" class="btn btn-danger reject-payment-btn">
-                                                        <i class="fas fa-times me-1"></i> رفض
-                                                    </button>
-                                                </form>
-                                                <?php endif; ?>
-                                                
-                                                <a href="admin.php?section=notifications&user_id=<?php echo $payment['user_id']; ?>" class="btn btn-info">
-                                                    <i class="fas fa-bell me-1"></i> إرسال إشعار
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Approve Payment Modal -->
-                                <div class="modal fade" id="approvePaymentModal<?php echo $payment['id']; ?>" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">اعتماد عملية الدفع #<?php echo $payment['id']; ?></h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="alert alert-info">
-                                                    <i class="fas fa-info-circle me-2"></i> 
-                                                    هل أنت متأكد من أنك تريد اعتماد عملية الدفع هذه؟
-                                                </div>
-                                                <div class="payment-details p-3 bg-light rounded mb-3">
-                                                    <p><strong>المستخدم:</strong> <?php echo htmlspecialchars($payment['username']); ?></p>
-                                                    <p><strong>المبلغ:</strong> $<?php echo number_format($payment['amount'], 2); ?></p>
-                                                    <p><strong>طريقة الدفع:</strong> <?php echo strip_tags($payment_method); ?></p>
-                                                </div>
-                                                <p class="text-success"><i class="fas fa-wallet me-1"></i> سيتم إضافة المبلغ $<?php echo number_format($payment['amount'], 2); ?> إلى رصيد المستخدم.</p>
-                                                
-                                                <form method="post" action="">
-                                                    <input type="hidden" name="transaction_id" value="<?php echo $payment['id']; ?>">
-                                                    
-                                                    <div class="d-grid gap-2">
-                                                        <button type="submit" name="approve_payment" class="btn btn-success">
-                                                            <i class="fas fa-check me-1"></i> تأكيد الاعتماد
-                                                        </button>
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Reject Payment Modal -->
-                                <div class="modal fade" id="rejectPaymentModal<?php echo $payment['id']; ?>" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">رفض عملية الدفع #<?php echo $payment['id']; ?></h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="alert alert-warning">
-                                                    <i class="fas fa-exclamation-triangle me-2"></i> 
-                                                    هل أنت متأكد من أنك تريد رفض عملية الدفع هذه؟
-                                                </div>
-                                                <div class="payment-details p-3 bg-light rounded mb-3">
-                                                    <p><strong>المستخدم:</strong> <?php echo htmlspecialchars($payment['username']); ?></p>
-                                                    <p><strong>المبلغ:</strong> $<?php echo number_format($payment['amount'], 2); ?></p>
-                                                    <p><strong>طريقة الدفع:</strong> <?php echo strip_tags($payment_method); ?></p>
-                                                </div>
-                                                
-                                                <form method="post" action="">
-                                                    <input type="hidden" name="transaction_id" value="<?php echo $payment['id']; ?>">
-                                                    
-                                                    <div class="mb-3">
-                                                        <label for="rejection_reason<?php echo $payment['id']; ?>" class="form-label">سبب الرفض (اختياري):</label>
-                                                        <textarea class="form-control" id="rejection_reason<?php echo $payment['id']; ?>" name="rejection_reason" rows="3" placeholder="أدخل سبب رفض عملية الدفع ليتم إرساله للمستخدم"></textarea>
-                                                    </div>
-                                                    
-                                                    <div class="d-grid gap-2">
-                                                        <button type="submit" name="reject_payment" class="btn btn-danger">
-                                                            <i class="fas fa-times me-1"></i> تأكيد الرفض
-                                                        </button>
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                                 <?php endwhile; ?>
                                 <?php else: ?>
                                 <tr>
@@ -450,13 +323,17 @@ $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ??
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             
-                                            <button type="button" class="btn btn-sm btn-success approve-payment-btn" data-bs-toggle="modal" data-bs-target="#approvePaymentModal<?php echo $payment['id']; ?>">
+                                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approvePaymentModal<?php echo $payment['id']; ?>">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                             
-                                            <button type="button" class="btn btn-sm btn-danger reject-payment-btn" data-bs-toggle="modal" data-bs-target="#rejectPaymentModal<?php echo $payment['id']; ?>">
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectPaymentModal<?php echo $payment['id']; ?>">
                                                 <i class="fas fa-times"></i>
                                             </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $payment['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
                                             
                                             <?php
                                             // Check if this payment has a receipt
@@ -553,25 +430,31 @@ $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ??
                                     </td>
                                     <td><?php echo date('Y-m-d H:i', strtotime($payment['created_at'])); ?></td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#paymentDetailsModal<?php echo $payment['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        
-                                        <?php
-                                        // Check if this payment has a receipt
-                                        $receipt_query = "SELECT * FROM payment_receipts WHERE transaction_id = ?";
-                                        $stmt = $conn->prepare($receipt_query);
-                                        $stmt->bind_param("i", $payment['id']);
-                                        $stmt->execute();
-                                        $receipt_result = $stmt->get_result();
-                                        
-                                        if ($receipt_result && $receipt_result->num_rows > 0) {
-                                            $receipt = $receipt_result->fetch_assoc();
-                                            echo '<button type="button" class="btn btn-sm btn-secondary view-receipt" data-receipt="' . htmlspecialchars($receipt['file_path']) . '">
-                                                <i class="fas fa-file-image"></i>
-                                            </button>';
-                                        }
-                                        ?>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#paymentDetailsModal<?php echo $payment['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $payment['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
+                                            
+                                            <?php
+                                            // Check if this payment has a receipt
+                                            $receipt_query = "SELECT * FROM payment_receipts WHERE transaction_id = ?";
+                                            $stmt = $conn->prepare($receipt_query);
+                                            $stmt->bind_param("i", $payment['id']);
+                                            $stmt->execute();
+                                            $receipt_result = $stmt->get_result();
+                                            
+                                            if ($receipt_result && $receipt_result->num_rows > 0) {
+                                                $receipt = $receipt_result->fetch_assoc();
+                                                echo '<button type="button" class="btn btn-sm btn-secondary view-receipt" data-receipt="' . htmlspecialchars($receipt['file_path']) . '">
+                                                    <i class="fas fa-file-image"></i>
+                                                </button>';
+                                            }
+                                            ?>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endwhile; ?>
@@ -657,25 +540,31 @@ $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ??
                                     </td>
                                     <td><?php echo date('Y-m-d H:i', strtotime($payment['created_at'])); ?></td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#paymentDetailsModal<?php echo $payment['id']; ?>">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        
-                                        <?php
-                                        // Check if this payment has a receipt
-                                        $receipt_query = "SELECT * FROM payment_receipts WHERE transaction_id = ?";
-                                        $stmt = $conn->prepare($receipt_query);
-                                        $stmt->bind_param("i", $payment['id']);
-                                        $stmt->execute();
-                                        $receipt_result = $stmt->get_result();
-                                        
-                                        if ($receipt_result && $receipt_result->num_rows > 0) {
-                                            $receipt = $receipt_result->fetch_assoc();
-                                            echo '<button type="button" class="btn btn-sm btn-secondary view-receipt" data-receipt="' . htmlspecialchars($receipt['file_path']) . '">
-                                                <i class="fas fa-file-image"></i>
-                                            </button>';
-                                        }
-                                        ?>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#paymentDetailsModal<?php echo $payment['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            
+                                            <a href="admin.php?section=notifications&user_id=<?php echo $payment['user_id']; ?>" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-bell"></i>
+                                            </a>
+                                            
+                                            <?php
+                                            // Check if this payment has a receipt
+                                            $receipt_query = "SELECT * FROM payment_receipts WHERE transaction_id = ?";
+                                            $stmt = $conn->prepare($receipt_query);
+                                            $stmt->bind_param("i", $payment['id']);
+                                            $stmt->execute();
+                                            $receipt_result = $stmt->get_result();
+                                            
+                                            if ($receipt_result && $receipt_result->num_rows > 0) {
+                                                $receipt = $receipt_result->fetch_assoc();
+                                                echo '<button type="button" class="btn btn-sm btn-secondary view-receipt" data-receipt="' . htmlspecialchars($receipt['file_path']) . '">
+                                                    <i class="fas fa-file-image"></i>
+                                                </button>';
+                                            }
+                                            ?>
+                                        </div>
                                     </td>
                                 </tr>
                                 <?php endwhile; ?>
@@ -750,6 +639,232 @@ $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ??
             </form>
         </div>
     </div>
+    
+    <!-- Payment Modals Container - All modals are extracted here -->
+    <div id="payment-modals-container">
+        <?php
+        // Get ALL payments to create modals for them
+        $all_modals_query = "SELECT t.*, u.username 
+                        FROM transactions t 
+                        JOIN users u ON t.user_id = u.id 
+                        WHERE t.type = 'deposit'
+                        ORDER BY t.created_at DESC";
+        $all_modals_result = $conn->query($all_modals_query);
+        
+        if ($all_modals_result && $all_modals_result->num_rows > 0):
+            while ($payment = $all_modals_result->fetch_assoc()):
+                // Determine payment method display
+                $payment_method = '';
+                if (strpos($payment['description'], 'بطاقة ائتمانية') !== false) {
+                    $payment_method = '<span class="badge bg-info">بطاقة ائتمانية</span>';
+                } elseif (strpos($payment['description'], 'USDT') !== false) {
+                    $payment_method = '<span class="badge bg-success">USDT</span>';
+                } elseif (strpos($payment['description'], 'Binance') !== false) {
+                    $payment_method = '<span class="badge bg-warning">Binance Pay</span>';
+                } elseif (strpos($payment['description'], 'تحويل بنكي') !== false) {
+                    $payment_method = '<span class="badge bg-secondary">تحويل بنكي</span>';
+                } elseif (strpos($payment['description'], 'الكريمي') !== false) {
+                    $payment_method = '<span class="badge bg-primary">بنك الكريمي</span>';
+                } elseif (strpos($payment['description'], 'حوالة محلية') !== false) {
+                    $payment_method = '<span class="badge bg-dark">حوالة محلية</span>';
+                } elseif (strpos($payment['description'], 'محفظة محلية') !== false) {
+                    $payment_method = '<span class="badge bg-info">محفظة محلية</span>';
+                } elseif (strpos($payment['description'], 'هدية') !== false) {
+                    $payment_method = '<span class="badge bg-danger">هدية</span>';
+                } else {
+                    $payment_method = '<span class="badge bg-light text-dark">أخرى</span>';
+                }
+                
+                // Determine status class and text
+                $status_class = '';
+                $status_text = '';
+                
+                switch ($payment['status']) {
+                    case 'pending':
+                        $status_class = 'bg-warning';
+                        $status_text = 'قيد الانتظار';
+                        break;
+                    case 'completed':
+                        $status_class = 'bg-success';
+                        $status_text = 'مكتمل';
+                        break;
+                    case 'failed':
+                        $status_class = 'bg-danger';
+                        $status_text = 'فشل';
+                        break;
+                    case 'cancelled':
+                        $status_class = 'bg-secondary';
+                        $status_text = 'ملغي';
+                        break;
+                }
+        ?>
+        
+        <!-- Payment Details Modal -->
+        <div class="modal fade" id="paymentDetailsModal<?php echo $payment['id']; ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">تفاصيل عملية الدفع #<?php echo $payment['id']; ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>رقم العملية:</strong> <?php echo $payment['id']; ?></p>
+                                <p><strong>المستخدم:</strong> 
+                                    <a href="admin.php?section=users&action=view&id=<?php echo $payment['user_id']; ?>">
+                                        <?php echo htmlspecialchars($payment['username']); ?>
+                                    </a>
+                                </p>
+                                <p><strong>المبلغ:</strong> $<?php echo number_format($payment['amount'], 2); ?></p>
+                                <p><strong>طريقة الدفع:</strong> <?php echo strip_tags($payment_method); ?></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>الحالة:</strong> <span class="badge <?php echo $status_class; ?>"><?php echo $status_text; ?></span></p>
+                                <p><strong>تاريخ الإنشاء:</strong> <?php echo date('Y-m-d H:i:s', strtotime($payment['created_at'])); ?></p>
+                                <?php if (isset($payment['updated_at'])): ?>
+                                <p><strong>آخر تحديث:</strong> <?php echo date('Y-m-d H:i:s', strtotime($payment['updated_at'])); ?></p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        <h6>الوصف:</h6>
+                        <div class="p-3 bg-light rounded">
+                            <?php echo nl2br(htmlspecialchars($payment['description'])); ?>
+                        </div>
+                        
+                        <?php
+                        // Check if this payment has a receipt
+                        $receipt_query = "SELECT * FROM payment_receipts WHERE transaction_id = ?";
+                        $stmt = $conn->prepare($receipt_query);
+                        $stmt->bind_param("i", $payment['id']);
+                        $stmt->execute();
+                        $receipt_result = $stmt->get_result();
+                        
+                        if ($receipt_result && $receipt_result->num_rows > 0):
+                            $receipt = $receipt_result->fetch_assoc();
+                        ?>
+                        <hr>
+                        <h6>إيصال الدفع:</h6>
+                        <div class="text-center p-3 bg-light rounded">
+                            <img src="<?php echo htmlspecialchars($receipt['file_path']); ?>" class="img-fluid border" style="max-height: 400px;">
+                            <div class="mt-2">
+                                <a href="<?php echo htmlspecialchars($receipt['file_path']); ?>" class="btn btn-sm btn-primary" target="_blank">
+                                    <i class="fas fa-external-link-alt me-1"></i> عرض الصورة كاملة
+                                </a>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                        
+                        <?php if ($payment['status'] === 'pending'): ?>
+                        <form method="post" action="" class="d-inline">
+                            <input type="hidden" name="transaction_id" value="<?php echo $payment['id']; ?>">
+                            <button type="submit" name="approve_payment" class="btn btn-success approve-payment-btn">
+                                <i class="fas fa-check me-1"></i> اعتماد
+                            </button>
+                        </form>
+                        
+                        <form method="post" action="" class="d-inline">
+                            <input type="hidden" name="transaction_id" value="<?php echo $payment['id']; ?>">
+                            <button type="submit" name="reject_payment" class="btn btn-danger reject-payment-btn">
+                                <i class="fas fa-times me-1"></i> رفض
+                            </button>
+                        </form>
+                        <?php endif; ?>
+                        
+                        <a href="admin.php?section=notifications&user_id=<?php echo $payment['user_id']; ?>" class="btn btn-info">
+                            <i class="fas fa-bell me-1"></i> إرسال إشعار
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Approve Payment Modal -->
+        <?php if ($payment['status'] === 'pending'): ?>
+        <div class="modal fade" id="approvePaymentModal<?php echo $payment['id']; ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">اعتماد عملية الدفع #<?php echo $payment['id']; ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> 
+                            هل أنت متأكد من أنك تريد اعتماد عملية الدفع هذه؟
+                        </div>
+                        <div class="payment-details p-3 bg-light rounded mb-3">
+                            <p><strong>المستخدم:</strong> <?php echo htmlspecialchars($payment['username']); ?></p>
+                            <p><strong>المبلغ:</strong> $<?php echo number_format($payment['amount'], 2); ?></p>
+                            <p><strong>طريقة الدفع:</strong> <?php echo strip_tags($payment_method); ?></p>
+                        </div>
+                        <p class="text-success"><i class="fas fa-wallet me-1"></i> سيتم إضافة المبلغ $<?php echo number_format($payment['amount'], 2); ?> إلى رصيد المستخدم.</p>
+                        
+                        <form method="post" action="">
+                            <input type="hidden" name="transaction_id" value="<?php echo $payment['id']; ?>">
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" name="approve_payment" class="btn btn-success">
+                                    <i class="fas fa-check me-1"></i> تأكيد الاعتماد
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reject Payment Modal -->
+        <div class="modal fade" id="rejectPaymentModal<?php echo $payment['id']; ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">رفض عملية الدفع #<?php echo $payment['id']; ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i> 
+                            هل أنت متأكد من أنك تريد رفض عملية الدفع هذه؟
+                        </div>
+                        <div class="payment-details p-3 bg-light rounded mb-3">
+                            <p><strong>المستخدم:</strong> <?php echo htmlspecialchars($payment['username']); ?></p>
+                            <p><strong>المبلغ:</strong> $<?php echo number_format($payment['amount'], 2); ?></p>
+                            <p><strong>طريقة الدفع:</strong> <?php echo strip_tags($payment_method); ?></p>
+                        </div>
+                        
+                        <form method="post" action="">
+                            <input type="hidden" name="transaction_id" value="<?php echo $payment['id']; ?>">
+                            
+                            <div class="mb-3">
+                                <label for="rejection_reason<?php echo $payment['id']; ?>" class="form-label">سبب الرفض (اختياري):</label>
+                                <textarea class="form-control" id="rejection_reason<?php echo $payment['id']; ?>" name="rejection_reason" rows="3" placeholder="أدخل سبب رفض عملية الدفع ليتم إرساله للمستخدم"></textarea>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" name="reject_payment" class="btn btn-danger">
+                                    <i class="fas fa-times me-1"></i> تأكيد الرفض
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <?php 
+            endwhile;
+        endif;
+        ?>
+    </div>
 </div>
 
 <!-- Receipt Modal -->
@@ -774,22 +889,6 @@ $month_deposits = $conn->query($month_deposits_query)->fetch_assoc()['total'] ??
 </div>
 
 <script>
-// Helper functions for statistics
-function getMonthlyDeposits(conn) {
-    // This should be implemented in PHP, but using a placeholder value
-    return 1000.00;
-}
-
-function getDailyDeposits(conn) {
-    // This should be implemented in PHP, but using a placeholder value
-    return 1000.00;
-}
-
-function getTotalDeposits(conn) {
-    // This should be implemented in PHP, but using a placeholder value
-    return 2231.03;
-}
-
 $(document).ready(function() {
     // Enhanced user search functionality with real-time results
     const userSearchInput = $('#userSearch');
@@ -930,7 +1029,7 @@ $(document).ready(function() {
     });
     
     // View receipt functionality
-    $('.view-receipt').on('click', function() {
+    $(document).on('click', '.view-receipt', function() {
         const receiptUrl = $(this).data('receipt');
         $('#receiptImage').attr('src', receiptUrl);
         $('#downloadReceipt').attr('href', receiptUrl);
@@ -950,7 +1049,17 @@ $(document).ready(function() {
     justify-content: center;
     font-size: 24px;
 }
-
+.nav-link .position-absolute {
+    top: -8px !important;
+    right: -8px !important;
+    min-width: 20px; /* Ensure minimum width for the badge */
+    height: 20px; /* Fixed height to match width */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px; /* Add horizontal padding */
+    border-radius: 50%; /* Keep it circular */
+}
 .bg-info-light {
     background-color: rgba(23, 162, 184, 0.1);
 }
@@ -1024,6 +1133,17 @@ $(document).ready(function() {
     justify-content: center;
     width: 60px;
     height: 60px;
+}
+
+/* Position badges on tabs */
+.nav-link .badge {
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+}
+
+.nav-link .position-absolute {
+    top: -8px !important;
+    right: -8px !important;
 }
 
 /* Responsive table on small devices */
