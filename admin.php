@@ -841,6 +841,167 @@ $pending_payments = $conn->query($pending_payments_query)->fetch_assoc()['pendin
             color: #6c757d;
         }
         
+        /* Custom styles for the admin pages */
+        /* Icon Boxes */
+        .icon-box {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .bg-info-light {
+            background-color: rgba(23, 162, 184, 0.1);
+        }
+
+        .bg-success-light {
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+
+        .bg-warning-light {
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+
+        .bg-primary-light {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        .bg-danger-light {
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+
+        /* Actions Column Styling */
+        .actions-column {
+            min-width: 160px;
+        }
+
+        .actions-column .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .actions-column .btn-group .btn {
+            margin-right: 2px;
+            margin-bottom: 2px;
+        }
+
+        /* Tab Badge Positioning */
+        .nav-link .position-absolute {
+            top: -8px !important;
+            right: -8px !important;
+            min-width: 20px; /* Ensure minimum width for the badge */
+            height: 20px; /* Fixed height to match width */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px; /* Add horizontal padding */
+            border-radius: 50%; /* Keep it circular */
+        }
+
+        /* User search styling */
+        .position-relative {
+            position: relative !important;
+        }
+
+        #searchResults, #orderSearchResults {
+            position: absolute;
+            width: 100%;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            z-index: 1050;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .list-group-item.user-result, .list-group-item.order-result {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-left: none;
+            border-right: none;
+            border-radius: 0;
+            transition: background-color 0.15s ease-in-out;
+        }
+
+        .list-group-item.user-result:first-child, .list-group-item.order-result:first-child {
+            border-top: none;
+        }
+
+        .list-group-item.user-result:last-child, .list-group-item.order-result:last-child {
+            border-bottom: none;
+        }
+
+        .list-group-item.user-result:hover, .list-group-item.order-result:hover {
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+
+        /* Selected user info */
+        #selected_user_info {
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            animation: fadeIn 0.3s;
+        }
+
+        /* Highlight selected row */
+        .highlight-row {
+            background-color: rgba(0, 123, 255, 0.2) !important;
+            transition: background-color 1s ease;
+        }
+
+        /* Better looking tables */
+        .datatable thead th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .datatable tbody tr:hover {
+            background-color: rgba(33, 150, 243, 0.05);
+        }
+
+        /* Badge styles */
+        .badge {
+            padding: 0.4em 0.65em;
+            font-weight: 500;
+        }
+
+        /* Fix right-to-left display for DataTables */
+        .dataTables_wrapper {
+            direction: rtl;
+        }
+
+        .dataTables_filter, .dataTables_length {
+            margin-bottom: 1rem;
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive styling */
+        @media (max-width: 767.98px) {
+            .actions-column {
+                min-width: auto;
+            }
+            
+            .actions-column .btn-group {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .actions-column .btn {
+                margin-bottom: 2px;
+            }
+        }
+        
         /* Data Tables Customization */
         .dataTables_wrapper .dataTables_length, 
         .dataTables_wrapper .dataTables_filter {
@@ -1109,112 +1270,219 @@ $pending_payments = $conn->query($pending_payments_query)->fetch_assoc()['pendin
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
     
     <script>
-        $(document).ready(function() {
+        document.addEventListener('DOMContentLoaded', function() {
             // Enhanced user search functionality with real-time results
             const userSearchInput = $('#userSearch');
             const searchResults = $('#searchResults');
+            const selectedUserInfo = $('#selected_user_info');
+            const userIdInput = $('#user_id');
             
-            userSearchInput.on('input', function() {
-                const username = $(this).val();
-                
-                // Only search if at least 2 characters
-                if (username.length >= 2) {
-                    $.ajax({
-                        url: 'admin/search_user.php',
-                        method: 'POST',
-                        data: { 
-                            username: username,
-                            user_type: 'all' 
-                        },
-                        dataType: 'json',
-                        beforeSend: function() {
-                            // Show loading indicator
-                            searchResults.html('<div class="p-2 text-center"><i class="fas fa-spinner fa-spin"></i> جاري البحث...</div>');
-                            searchResults.show();
-                        },
-                        success: function(response) {
-                            let results = '';
-                            if (response.length > 0) {
-                                // Create user list
-                                results += '<div class="list-group">';
-                                response.forEach(function(user) {
-                                    results += `<a href="#" class="list-group-item list-group-item-action user-result d-flex justify-content-between align-items-center" 
-                                                data-id="${user.id}" 
-                                                data-username="${user.username}"
-                                                data-email="${user.email}">
-                                                <div>
-                                                    <strong>${user.username}</strong>
-                                                    <small class="d-block text-muted">${user.email}</small>
-                                                </div>
-                                                <span class="badge bg-primary rounded-pill">اختيار</span>
-                                                </a>`;
-                                });
-                                results += '</div>';
-                            } else {
-                                results = '<div class="p-3 text-center text-muted">لا توجد نتائج</div>';
+            if (userSearchInput.length) {
+                userSearchInput.on('input', function() {
+                    const username = $(this).val();
+                    
+                    // Only search if at least 2 characters
+                    if (username.length >= 2) {
+                        $.ajax({
+                            url: 'admin/search_user.php',
+                            method: 'POST',
+                            data: { 
+                                username: username,
+                                user_type: 'all' 
+                            },
+                            dataType: 'json',
+                            beforeSend: function() {
+                                // Show loading indicator
+                                searchResults.html('<div class="p-2 text-center"><i class="fas fa-spinner fa-spin"></i> جاري البحث...</div>');
+                                searchResults.show();
+                            },
+                            success: function(response) {
+                                let results = '';
+                                if (response.length > 0) {
+                                    // Create user list
+                                    results += '<div class="list-group">';
+                                    response.forEach(function(user) {
+                                        results += `<a href="#" class="list-group-item list-group-item-action user-result d-flex justify-content-between align-items-center" 
+                                                    data-id="${user.id}" 
+                                                    data-username="${user.username}"
+                                                    data-email="${user.email}">
+                                                    <div>
+                                                        <strong>${user.username}</strong>
+                                                        <small class="d-block text-muted">${user.email}</small>
+                                                    </div>
+                                                    <span class="badge bg-primary rounded-pill">اختيار</span>
+                                                    </a>`;
+                                    });
+                                    results += '</div>';
+                                } else {
+                                    results = '<div class="p-3 text-center text-muted">لا توجد نتائج</div>';
+                                }
+                                searchResults.html(results);
+                            },
+                            error: function() {
+                                searchResults.html('<div class="p-3 text-center text-danger">حدث خطأ أثناء البحث</div>');
                             }
-                            searchResults.html(results);
-                        },
-                        error: function() {
-                            searchResults.html('<div class="p-3 text-center text-danger">حدث خطأ أثناء البحث</div>');
-                        }
-                    });
-                } else {
-                    searchResults.hide();
-                }
-            });
-            
-            // Handle clicking outside the search results to hide them
-            $(document).on('click', function(e) {
-                if (!userSearchInput.is(e.target) && !searchResults.is(e.target) && searchResults.has(e.target).length === 0) {
-                    searchResults.hide();
-                }
-            });
-            
-            // Handle selecting a user from search results
-            $(document).on('click', '.user-result', function(e) {
-                e.preventDefault();
-                const userId = $(this).data('id');
-                const username = $(this).data('username');
-                const email = $(this).data('email');
+                        });
+                    } else {
+                        searchResults.hide();
+                    }
+                });
                 
-                // Set the selected username in the input
-                userSearchInput.val(username);
+                // Handle clicking outside the search results to hide them
+                $(document).on('click', function(e) {
+                    if (!userSearchInput.is(e.target) && !searchResults.is(e.target) && searchResults.has(e.target).length === 0) {
+                        searchResults.hide();
+                    }
+                });
                 
-                // Store user ID in a hidden field
-                if ($('#user_id').length === 0) {
-                    userSearchInput.after('<input type="hidden" id="user_id" name="user_id" value="' + userId + '">');
-                } else {
-                    $('#user_id').val(userId);
-                }
-                
-                // Add user info below the search field
-                if ($('#selected_user_info').length === 0) {
-                    userSearchInput.parent().append('<div id="selected_user_info" class="mt-2 p-2 bg-light rounded"></div>');
-                }
-                
-                $('#selected_user_info').html(`
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge bg-info">المستخدم المحدد</span>
-                            <span class="ms-2">${username} (${email})</span>
+                // Handle selecting a user from search results
+                $(document).on('click', '.user-result', function(e) {
+                    e.preventDefault();
+                    const userId = $(this).data('id');
+                    const username = $(this).data('username');
+                    const email = $(this).data('email');
+                    
+                    // Set the selected username in the input
+                    userSearchInput.val(username);
+                    
+                    // Store user ID in the hidden field
+                    userIdInput.val(userId);
+                    
+                    // Add user info below the search field
+                    if (selectedUserInfo.length === 0) {
+                        userSearchInput.parent().append('<div id="selected_user_info" class="mt-2 p-2 bg-light rounded"></div>');
+                        selectedUserInfo = $('#selected_user_info');
+                    }
+                    
+                    selectedUserInfo.html(`
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-info">المستخدم المحدد</span>
+                                <span class="ms-2">${username} (${email})</span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary clear-user">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary clear-user">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `);
+                    `).show();
+                    
+                    // Hide search results
+                    searchResults.hide();
+                });
                 
-                // Hide search results
-                searchResults.hide();
-            });
+                // Clear selected user
+                $(document).on('click', '.clear-user', function() {
+                    userSearchInput.val('');
+                    userIdInput.val('');
+                    selectedUserInfo.hide();
+                });
+            }
             
-            // Clear selected user
-            $(document).on('click', '.clear-user', function() {
-                userSearchInput.val('');
-                $('#user_id').val('');
-                $('#selected_user_info').remove();
-            });
+            // Enhanced order search functionality
+            const orderSearch = $('#orderSearch');
+            const orderSearchResults = $('#searchResults');
+            
+            if (orderSearch.length) {
+                orderSearch.on('input', function() {
+                    const searchTerm = $(this).val();
+                    
+                    // Only search if at least 2 characters
+                    if (searchTerm.length >= 2) {
+                        // Show loading indicator
+                        orderSearchResults.html('<div class="p-2 text-center"><i class="fas fa-spinner fa-spin"></i> جاري البحث...</div>');
+                        orderSearchResults.show();
+                        
+                        // Perform search on all visible rows in active tab
+                        const activeTab = $('.tab-pane.active');
+                        const rows = activeTab.find('tbody tr');
+                        let matches = [];
+                        
+                        rows.each(function() {
+                            const id = $(this).find('td:first-child').text().toLowerCase();
+                            const username = $(this).find('td:nth-child(2)').text().toLowerCase();
+                            const service = $(this).find('td:nth-child(3)').text().toLowerCase();
+                            
+                            if (id.includes(searchTerm.toLowerCase()) || 
+                                username.includes(searchTerm.toLowerCase()) || 
+                                service.includes(searchTerm.toLowerCase())) {
+                                matches.push({
+                                    id: $(this).find('td:first-child').text(),
+                                    username: $(this).find('td:nth-child(2)').text().trim(),
+                                    service: $(this).find('td:nth-child(3)').text().trim()
+                                });
+                            }
+                        });
+                        
+                        // Display results
+                        if (matches.length > 0) {
+                            let resultsHTML = '<div class="list-group">';
+                            matches.forEach(function(match) {
+                                resultsHTML += `<a href="#order_${match.id}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center order-result" 
+                                            data-id="${match.id}">
+                                    <div>
+                                        <strong>#${match.id}</strong> - ${match.username}
+                                        <small class="d-block text-muted">${match.service}</small>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">عرض</span>
+                                </a>`;
+                            });
+                            resultsHTML += '</div>';
+                            orderSearchResults.html(resultsHTML);
+                        } else {
+                            orderSearchResults.html('<div class="p-3 text-center text-muted">لا توجد نتائج</div>');
+                        }
+                    } else {
+                        orderSearchResults.hide();
+                    }
+                });
+                
+                // Handle clicking outside the search results to hide them
+                $(document).on('click', function(e) {
+                    if (!orderSearch.is(e.target) && !orderSearchResults.is(e.target) && orderSearchResults.has(e.target).length === 0) {
+                        orderSearchResults.hide();
+                    }
+                });
+                
+                // Handle selecting an order from search results
+                $(document).on('click', '.order-result', function(e) {
+                    e.preventDefault();
+                    const orderId = $(this).data('id');
+                    
+                    // Find and highlight the row
+                    const table = $('.tab-pane.active table');
+                    const row = table.find(`td:contains(${orderId})`).first().closest('tr');
+                    
+                    if (row.length) {
+                        // Scroll to the row
+                        $('html, body').animate({
+                            scrollTop: row.offset().top - 100
+                        }, 500);
+                        
+                        // Highlight the row
+                        row.addClass('highlight-row');
+                        setTimeout(function() {
+                            row.removeClass('highlight-row');
+                        }, 3000);
+                    }
+                    
+                    // Hide search results
+                    orderSearchResults.hide();
+                });
+            }
+            
+            // Initialize DataTables for all tables
+            if ($.fn.DataTable) {
+                $('.datatable').each(function() {
+                    $(this).DataTable({
+                        "language": {
+                            "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/ar.json"
+                        },
+                        "pageLength": 25,
+                        "order": [[0, "desc"]],
+                        "responsive": true
+                    });
+                });
+            }
             
             // Payment method change
             $('#payment_method').on('change', function() {
@@ -1243,6 +1511,127 @@ $pending_payments = $conn->query($pending_payments_query)->fetch_assoc()['pendin
                 
                 $('#description').attr('placeholder', placeholder);
             }
+            
+            // Payment approval/rejection confirmation
+            $('.approve-payment-btn').on('click', function(e) {
+                if (!confirm('هل أنت متأكد من اعتماد عملية الدفع هذه؟')) {
+                    e.preventDefault();
+                }
+            });
+            
+            $('.reject-payment-btn').on('click', function(e) {
+                if (!confirm('هل أنت متأكد من رفض عملية الدفع هذه؟')) {
+                    e.preventDefault();
+                }
+            });
+            
+            // View receipt functionality
+            $('.view-receipt').on('click', function() {
+                const receiptUrl = $(this).data('receipt');
+                $('#receiptImage').attr('src', receiptUrl);
+                $('#downloadReceipt').attr('href', receiptUrl);
+                $('#receiptModal').modal('show');
+            });
+            
+            // Gift reason selection
+            $('#gift_reason').on('change', function() {
+                if ($(this).val() === 'أخرى') {
+                    $('.custom-reason').show();
+                    $('#custom_reason').prop('required', true);
+                } else {
+                    $('.custom-reason').hide();
+                    $('#custom_reason').prop('required', false);
+                }
+            });
+            
+            // Handle status change for fields in orders page
+            const statusSelects = document.querySelectorAll('select[id^="status"]');
+            statusSelects.forEach(select => {
+                const orderId = select.id.replace('status', '');
+                const partialRemainsField = document.getElementById('partialRemains' + orderId);
+                const startCountField = document.getElementById('startCountField' + orderId);
+                
+                select.addEventListener('change', function() {
+                    if (this.value === 'partial') {
+                        if (partialRemainsField) partialRemainsField.style.display = 'block';
+                    } else {
+                        if (partialRemainsField) partialRemainsField.style.display = 'none';
+                    }
+                    
+                    if (this.value === 'processing') {
+                        if (startCountField) startCountField.style.display = 'block';
+                    } else {
+                        if (startCountField) startCountField.style.display = 'none';
+                    }
+                });
+                
+                // Initialize visibility based on current value
+                if (select.value === 'partial' && partialRemainsField) {
+                    partialRemainsField.style.display = 'block';
+                }
+                
+                if (select.value === 'processing' && startCountField) {
+                    startCountField.style.display = 'block';
+                }
+            });
+            
+            // Handle refresh button for orders
+            const refreshButton = document.getElementById('refreshOrders');
+            if (refreshButton) {
+                refreshButton.addEventListener('click', function() {
+                    location.reload();
+                });
+            }
+            
+            // Handle export to CSV for orders
+            const exportButton = document.getElementById('exportOrdersCSV');
+            if (exportButton) {
+                exportButton.addEventListener('click', function() {
+                    const activeTab = document.querySelector('.tab-pane.active');
+                    const table = activeTab.querySelector('table');
+                    
+                    let csv = [];
+                    const rows = table.querySelectorAll('tr');
+                    
+                    rows.forEach(row => {
+                        const cols = row.querySelectorAll('td, th');
+                        let rowText = [];
+                        
+                        cols.forEach((col, index) => {
+                            // Skip the actions column
+                            if (index !== cols.length - 1) {
+                                let text = col.innerText.replace(/"/g, '""');
+                                // Remove badge text for status column
+                                if (index === 5 && row.querySelector('.badge')) {
+                                    text = row.querySelector('.badge').innerText;
+                                }
+                                rowText.push('"' + text + '"');
+                            }
+                        });
+                        
+                        csv.push(rowText.join(','));
+                    });
+                    
+                    // Download CSV file
+                    const csvContent = csv.join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    const date = new Date().toISOString().slice(0, 10);
+                    
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', 'orders_export_' + date + '.csv');
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            }
+            
+            // Add contains selector to jQuery
+            jQuery.expr[':'].contains = function(a, i, m) {
+                return jQuery(a).text().toUpperCase().indexOf(m[3].toUpperCase()) >= 0;
+            };
             
             // Additional CSS and fixes for users section only
             if (window.location.href.includes('section=users')) {
@@ -1282,47 +1671,6 @@ $pending_payments = $conn->query($pending_payments_query)->fetch_assoc()['pendin
                     }
                 }, 200);
             }
-        
-            // Initialize DataTables
-            $('.datatable').DataTable({
-                "ordering": true,
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/ar.json"
-                },
-                "order": [[0, "desc"]]
-            });
-            
-            // Payment approval/rejection confirmation
-            $('.approve-payment-btn').on('click', function(e) {
-                if (!confirm('هل أنت متأكد من اعتماد عملية الدفع هذه؟')) {
-                    e.preventDefault();
-                }
-            });
-            
-            $('.reject-payment-btn').on('click', function(e) {
-                if (!confirm('هل أنت متأكد من رفض عملية الدفع هذه؟')) {
-                    e.preventDefault();
-                }
-            });
-            
-            // View receipt functionality
-            $('.view-receipt').on('click', function() {
-                const receiptUrl = $(this).data('receipt');
-                $('#receiptImage').attr('src', receiptUrl);
-                $('#downloadReceipt').attr('href', receiptUrl);
-                $('#receiptModal').modal('show');
-            });
-            
-            // Gift reason selection
-            $('#gift_reason').on('change', function() {
-                if ($(this).val() === 'أخرى') {
-                    $('.custom-reason').show();
-                    $('#custom_reason').prop('required', true);
-                } else {
-                    $('.custom-reason').hide();
-                    $('#custom_reason').prop('required', false);
-                }
-            });
         });
     </script>
 </body>
